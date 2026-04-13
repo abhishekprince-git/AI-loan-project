@@ -12,11 +12,11 @@ import {
 } from 'lucide-react';
 import { NavItem } from './NavItem';
 
-export const Sidebar = ({ currentStep, setStep, isOpen, onClose }) => (
+export const Sidebar = ({ currentStep, setStep, isOpen, onClose, forceHidden = false }) => (
   <>
-    {isOpen && <button onClick={onClose} className="lg:hidden fixed inset-0 bg-on-surface/40 backdrop-blur-[1px] z-55" aria-label="Close navigation" />}
+    {isOpen && !forceHidden && <button onClick={onClose} className="lg:hidden fixed inset-0 bg-on-surface/40 backdrop-blur-[1px] z-55" aria-label="Close navigation" />}
 
-    <aside className="hidden lg:flex h-screen w-64 fixed left-0 top-0 bg-surface-container flex-col py-8 px-6 z-50">
+    <aside className={`h-screen w-64 fixed left-0 top-0 bg-surface-container flex-col py-8 px-6 z-50 ${forceHidden ? 'hidden' : 'hidden lg:flex'}`}>
       <div className="mb-10 px-2">
         <h1 className="text-xl font-bold tracking-tighter text-on-surface">LoanFlow AI</h1>
         <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mt-1 opacity-60">Onboarding v2.4</p>
@@ -70,7 +70,7 @@ export const Sidebar = ({ currentStep, setStep, isOpen, onClose }) => (
       </div>
     </aside>
 
-    <aside className={`lg:hidden h-screen w-70 max-w-[85vw] fixed left-0 top-0 bg-surface-container flex flex-col py-6 px-5 z-60 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <aside className={`lg:hidden h-screen w-70 max-w-[85vw] fixed left-0 top-0 bg-surface-container flex flex-col py-6 px-5 z-60 transition-transform duration-300 ${isOpen && !forceHidden ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="mb-8 px-2">
         <div className="flex items-start justify-between gap-3">
           <h1 className="text-xl font-bold tracking-tighter text-on-surface">LoanFlow AI</h1>
