@@ -1,0 +1,5 @@
+{
+  "name": "LoanFlow AI",
+  "description": "AI-powered loan onboarding system featuring secure identity verification, biometric analysis, and instant decisioning.",
+  "requestFramePermissions": ["camera", "microphone"]
+}

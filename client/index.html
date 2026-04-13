@@ -1,120 +1,13 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Agora Video Call</title>
-  <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
-</head>
-<body>
-
-<h2>Agora Video Call</h2>
-
-<button onclick="createLink()">Create Call Link</button>
-<p id="link"></p>
-
-<button onclick="joinFromInput()">Join Call</button>
-<button onclick="leaveCall()">❌ Leave Call</button>
-
-<hr>
-
-<div id="videos"></div>
-
-<script>
-const APP_ID = "452b03fab56b4ac89d3588f714a1ae1e";
-
-let client;
-let localTracks = [];
-let currentRoom = null;
-
-// 🔗 random room id
-function generateRoomId() {
-  return Math.random().toString(36).substring(2, 8);
-}
-
-// 🔗 create link + auto join
-function createLink() {
-  const roomId = generateRoomId();
-  currentRoom = roomId;
-
-  const link = window.location.href.split("?")[0] + "?room=" + roomId;
-
-  document.getElementById("link").innerHTML =
-    `<a href="${link}" target="_blank">${link}</a>`;
-
-  alert("Link bana diya! Ab Join Call dabaa 😈");
-}
-
-// 🔥 join manually
-function joinFromInput() {
-  if (currentRoom) {
-    joinCall(currentRoom);
-  } else {
-    const params = new URLSearchParams(window.location.search);
-    const room = params.get("room");
-
-    if (room) {
-      joinCall(room);
-    } else {
-      alert("Pehle link create kar ya link se open kar 😤");
-    }
-  }
-}
-
-// 🎥 join call
-async function joinCall(roomId) {
-  try {
-    client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-
-    await client.join(APP_ID, roomId, null, null);
-
-    localTracks = await AgoraRTC.createMicrophoneAndCameraTracks();
-
-    const localPlayer = document.createElement("div");
-    localPlayer.style.width = "400px";
-    localPlayer.style.height = "300px";
-    document.getElementById("videos").appendChild(localPlayer);
-
-    localTracks[1].play(localPlayer);
-
-    await client.publish(localTracks);
-
-    client.on("user-published", async (user, mediaType) => {
-      await client.subscribe(user, mediaType);
-
-      if (mediaType === "video") {
-        const remotePlayer = document.createElement("div");
-        remotePlayer.style.width = "400px";
-        remotePlayer.style.height = "300px";
-        document.getElementById("videos").appendChild(remotePlayer);
-
-        user.videoTrack.play(remotePlayer);
-      }
-
-      if (mediaType === "audio") {
-        user.audioTrack.play();
-      }
-    });
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// ❌ leave call
-async function leaveCall() {
-  if (localTracks.length > 0) {
-    localTracks.forEach(track => {
-      track.stop();
-      track.close();
-    });
-  }
-
-  if (client) {
-    await client.leave();
-  }
-
-  document.getElementById("videos").innerHTML = "";
-}
-</script>
-
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
+
