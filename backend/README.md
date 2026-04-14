@@ -14,6 +14,8 @@ This backend issues short-lived Agora RTC tokens and provides Groq APIs for spee
    - `AGORA_APP_ID`
    - `AGORA_APP_CERTIFICATE`
    - `GROQ_API_KEY`
+   - `MONGODB_URI`
+   - optional `MONGO_DB_NAME` (defaults to `ai-loan-app`)
 
 Optional model overrides:
 - `GROQ_CHAT_MODEL` (default: `llama-3.3-70b-versatile`)
@@ -33,3 +35,12 @@ Server runs on `http://localhost:4000` by default.
    - multipart form-data: `audio=<audio-blob>`
 - `POST /groq/chat`
    - body: `{ "messages": [{ "role": "user", "content": "..." }] }`
+
+## MongoDB Models
+
+- `User`
+- `LoanApplication`
+- `Verification`
+- `SupportTicket`
+
+These models reflect the frontend data used across profile, onboarding, verification, dashboard, offer, settings, and support screens.

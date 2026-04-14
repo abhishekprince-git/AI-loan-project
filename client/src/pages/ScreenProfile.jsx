@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { 
   User, 
   Mail, 
@@ -13,14 +14,22 @@ import {
 } from 'lucide-react';
 
 export const ScreenProfile = () => {
-  const profile = {
-    name: "Alex Rivera",
-    email: "alex.rivera@example.com",
-    phone: "+91 98765 43210",
-    location: "Austin, Texas",
-    occupation: "Senior Product Designer",
-    dob: "14 March 1992"
+  const profileData = useSelector((state) => state.applicationData.data?.profile);
+  const financialProfile = useSelector((state) => state.applicationData.data?.financialProfile);
+
+  const profile = profileData || {
+    name: 'Alex Rivera',
+    email: 'alex.rivera@example.com',
+    phone: '+91 98765 43210',
+    location: 'Austin, Texas',
+    occupation: 'Senior Product Designer',
+    dob: '14 March 1992'
   };
+
+  const bankName = financialProfile?.bankName || 'HDFC Bank';
+  const maskedAccountNumber = financialProfile?.maskedAccountNumber || '• • • • 4921';
+  const creditUpdatedAt = financialProfile?.creditReportUpdatedAt || 'Today';
+  const creditTier = financialProfile?.creditTier || 'Gold';
 
   const ProfileField = ({ icon, label, value, onEdit }) => (
     <div className="flex items-center justify-between p-4 sm:p-5 bg-surface-container-lowest rounded-2xl border border-outline-variant/15 hover:border-primary/20 transition-all ambient-bloom">
@@ -121,7 +130,7 @@ export const ScreenProfile = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-on-surface">Primary Bank Account</h4>
-                    <p className="text-xs text-on-surface-variant font-medium">HDFC Bank • • • • 4921</p>
+                    <p className="text-xs text-on-surface-variant font-medium">{bankName} {maskedAccountNumber}</p>
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-on-surface-variant opacity-40 group-hover:translate-x-1 transition-transform" />
@@ -133,7 +142,19 @@ export const ScreenProfile = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-on-surface">Credit Report</h4>
-                    <p className="text-xs text-on-surface-variant font-medium">Last updated: Today</p>
+                    <p className="text-xs text-on-surface-variant font-medium">Last updated: {creditUpdatedAt}</p>
+                  </div>
+                </div>
+                <ChevronRight size={20} className="text-on-surface-variant opacity-40 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <div className="flex items-center justify-between p-5 sm:p-6 bg-surface-container-lowest rounded-2xl border border-outline-variant/15 group hover:border-primary/20 transition-all cursor-pointer ambient-bloom">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-on-surface">Credit Tier</h4>
+                    <p className="text-xs text-on-surface-variant font-medium">{creditTier}</p>
                   </div>
                 </div>
                 <ChevronRight size={20} className="text-on-surface-variant opacity-40 group-hover:translate-x-1 transition-transform" />

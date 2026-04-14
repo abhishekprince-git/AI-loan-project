@@ -1,7 +1,7 @@
 import React from 'react';
 import { Calendar, CreditCard } from 'lucide-react';
 
-export const OfferMainCard = ({ tenure, setTenure, emi }) => (
+export const OfferMainCard = ({ tenure, setTenure, emi, approvedAmount }) => (
   <div className="col-span-12 lg:col-span-8 bg-surface-container-lowest rounded-xl p-8 ambient-bloom ghost-border relative overflow-hidden">
     <div className="absolute top-0 right-0 p-6 opacity-5">
       <CreditCard size={120} />
@@ -10,7 +10,7 @@ export const OfferMainCard = ({ tenure, setTenure, emi }) => (
       <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-5">
         <div>
           <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Approved Amount</p>
-          <h3 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-primary">₹2,00,000</h3>
+          <h3 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-primary">{approvedAmount || '₹2,00,000'}</h3>
         </div>
         <div className="text-right">
           <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">Interest Rate</p>

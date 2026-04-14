@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -8,11 +8,16 @@ import { Sidebar, TopBar } from './components';
 import { getStepMeta, getStepProgress, getScreenComponent } from './services';
 import { FLOW_LAST_STEP, isFlowStep } from './configs/constants';
 import { closeSidebar, navigateToStep, nextStep, toggleSidebar, selectCurrentStep, selectIsSidebarOpen } from './features/loanFlow';
+import { loadApplicationState } from './features/applicationData';
 
 export default function App() {
   const dispatch = useDispatch();
   const currentStep = useSelector(selectCurrentStep);
   const isSidebarOpen = useSelector(selectIsSidebarOpen);
+
+  useEffect(() => {
+    dispatch(loadApplicationState());
+  }, [dispatch]);
 
   const stepInfo = getStepMeta(currentStep);
   const progress = getStepProgress(currentStep);

@@ -1,15 +1,15 @@
 import React from 'react';
 import { CheckCircle2, Clock3 } from 'lucide-react';
 
-export const SupportSidebar = () => (
+export const SupportSidebar = ({ tickets }) => (
   <div className="xl:col-span-4 space-y-6">
     <div className="bg-surface-container-lowest rounded-3xl p-6 ambient-bloom">
       <h4 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant mb-5">Current Ticket Status</h4>
       <div className="space-y-4">
-        {[
+        {(tickets?.length ? tickets : [
           { title: 'KYC Document Clarification', state: 'In Progress', time: 'Updated 12 min ago' },
           { title: 'EMI Schedule Request', state: 'Resolved', time: 'Resolved yesterday' }
-        ].map((item, idx) => (
+        ]).map((item, idx) => (
           <div key={idx} className="p-4 rounded-xl bg-surface-container-low border border-outline-variant/10">
             <p className="text-sm font-semibold text-on-surface mb-1">{item.title}</p>
             <div className="flex items-center justify-between">

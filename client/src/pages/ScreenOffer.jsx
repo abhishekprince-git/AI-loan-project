@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { OfferAcceptedState, OfferMainCard, OfferSummaryCard, OfferActionBar, OfferFooter } from '../features/offer';
+import { acceptOffer, selectApplicationData, selectOfferData } from '../features/applicationData';
 
 export const ScreenOffer = () => {
+  const dispatch = useDispatch();
+  const application = useSelector(selectApplicationData);
+  const offer = useSelector(selectOfferData);
   const [tenure, setTenure] = useState(12);
   const [isAccepted, setIsAccepted] = useState(false);
 
-  const emi = tenure === 12 ? 17725 : tenure === 24 ? 9380 : 6600;
+  useEffect(() => {
+    if (typeof offer?.tenure === 'number') {
+      setTenure(offer.tenure);
+    }
+
+    if (typeof offer?.isAccepted === 'boolean') {
+      setIsAccepted(offer.isAccepted);
+    }
+  }, [offer]);
+
+  const emi = offer?.emi || (tenure === 12 ? 17725 : tenure === 24 ? 9380 : 6600);
+  const approvedAmount = offer?.approvedAmount || '₹2,00,000';
 
   if (isAccepted) {
     return <OfferAcceptedState />;
@@ -19,9 +35,24 @@ export const ScreenOffer = () => {
       </section>
 
       <div className="grid grid-cols-12 gap-6">
-        <OfferMainCard tenure={tenure} setTenure={setTenure} emi={emi} />
+        <OfferMainCard tenure={tenure} setTenure={setTenure} emi={emi} approvedAmount={approvedAmount} />
         <OfferSummaryCard />
-        <OfferActionBar onAccept={() => setIsAccepted(true)} />
+        <OfferActionBar
+          onAccept={async () => {
+            if (!application?.appId) {
+              setIsAccepted(true);
+              return;
+            }
+
+            await dispatch(
+              acceptOffer({
+                appId: application.appId,
+                payload: { isAccepted: true, tenure, emi }
+              })
+            );
+            setIsAccepted(true);
+          }}
+        />
       </div>
       <OfferFooter />
     </div>
