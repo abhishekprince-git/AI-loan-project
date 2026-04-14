@@ -108,3 +108,128 @@ export async function chatWithAgent(req, res) {
     return res.status(500).json({ error: 'Failed to generate agent response with Groq.' });
   }
 }
+
+export async function extractDataFromChat(req, res) {
+  if (!ENV.GROQ_API_KEY) {
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured in backend/.env' });
+  }
+
+  const { messages } = req.body || {};
+  const safeMessages = Array.isArray(messages) ? messages : [];
+
+  const extractionPrompt = `You are a data extraction assistant. Based on the following interview transcript, extract the loan application details into a strictly formatted JSON object.
+The JSON must have EXACTLY these keys:
+"full_name", "dob", "pan", "aadhaar", "employment_type", "monthly_income", "company_name", "work_experience", "loan_amount", "loan_purpose".
+If a value is not found, leave it as an empty string. Output ONLY the raw JSON object, without any markdown formatting, no \`\`\`json wrappers.
+
+Transcript:
+${safeMessages.map(m => `[${m.role}] ${m.content}`).join('\n')}
+`;
+
+  try {
+    const groq = createGroqClient(ENV.GROQ_API_KEY);
+    const reply = await generateAgentReply(groq, [{ role: 'user', content: extractionPrompt }], { model: ENV.GROQ_CHAT_MODEL });
+    
+    let parsed = {};
+    try {
+      const cleaned = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      console.warn("Could not parse JSON cleanly:", reply);
+      parsed = { raw: reply };
+    }
+
+    return res.json({ extractedData: parsed });
+  } catch (error) {
+    console.error('Groq extraction error:', error);
+    return res.status(500).json({ error: 'Failed to extract data with Groq.' });
+  }
+}
+
+export async function ocrDocument(req, res) {
+  if (!ENV.GROQ_API_KEY) {
+    return res.status(500).json({ error: 'GROQ_API_KEY is not configured' });
+  }
+
+  const { imageBase64 } = req.body || {};
+  if (!imageBase64) return res.status(400).json({ error: 'imageBase64 is required' });
+
+  const systemPrompt = `Extract Name, Date of Birth, Address, PAN Number, Aadhaar Number, and Income Details from this document image. Return a STRICT JSON object only. Do not wrap in markdown \`\`\`. Keys: "name", "dob", "address", "pan", "aadhaar", "income". If missing, leave empty string.`;
+
+  try {
+    const groq = createGroqClient(ENV.GROQ_API_KEY);
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.2-11b-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: systemPrompt },
+            { type: "image_url", image_url: { url: imageBase64 } }
+          ]
+        }
+      ],
+      max_tokens: 1024
+    });
+
+    const reply = completion.choices[0]?.message?.content || '{}';
+    let parsed = {};
+    try {
+      const cleaned = reply.replace(/```json/g, '').replace(/```/g, '').trim();
+      parsed = JSON.parse(cleaned);
+    } catch(e) {
+      parsed = { raw: reply };
+    }
+
+    return res.json({ ocrData: parsed });
+  } catch (error) {
+    console.error('Groq Vision error:', error);
+    return res.status(500).json({ error: 'Failed to perform OCR with Groq.' });
+  }
+}
+
+export async function evaluateLoanEligibility(req, res) {
+  const { monthly_income, employment_type, loan_amount } = req.body || {};
+  
+  // Clean values from text (e.g. "50000 rupees" -> 50000)
+  const extractNumber = (str) => {
+    const match = String(str || '').match(/\d+/g);
+    return match ? Number(match.join('')) : 0;
+  };
+
+  const parsedIncome = extractNumber(monthly_income);
+  const parsedAmount = extractNumber(loan_amount);
+
+  if (parsedIncome < 15000) {
+    return res.json({
+      decision: 'Rejected',
+      reason: 'Minimum verified monthly income of 15,000 is required for premium products.'
+    });
+  }
+
+  // Simplistic eligibility check: total amount shouldn't be insanely disproportionate to monthly income
+  const estimatedEmi = parsedAmount / 36;
+
+  if (estimatedEmi > (parsedIncome * 0.65)) {
+    return res.json({
+      decision: 'Rejected',
+      reason: `Requested loan amount is disproportionate to the verified income bracket.`
+    });
+  }
+
+  const empStr = String(employment_type).toLowerCase();
+  if (empStr.includes('unemployed') || empStr.includes('student')) {
+    return res.json({
+      decision: 'Rejected',
+      reason: 'Stable employment or business revenue is required for this loan product.'
+    });
+  }
+
+  return res.json({
+    decision: 'Approved',
+    offers: [
+      { id: '1', bank: 'Global Trust Bank', amount: parsedAmount, rate: '8.5%', term: '36 Months', type: 'Personal Loan' },
+      { id: '2', bank: 'Prime National', amount: parsedAmount, rate: '9.2%', term: '48 Months', type: 'Flexi Loan' }
+    ]
+  });
+}

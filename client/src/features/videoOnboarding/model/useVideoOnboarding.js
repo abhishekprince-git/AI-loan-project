@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import AgoraRTC from 'agora-rtc-sdk-ng';
+import { setExtractedData } from '../../applicationData';
 
 export const useVideoOnboarding = (onNext) => {
+  const dispatch = useDispatch();
   const agoraClientRef = useRef(null);
   const localTracksRef = useRef({ audioTrack: null, videoTrack: null });
   const mediaRecorderRef = useRef(null);
@@ -29,14 +32,16 @@ export const useVideoOnboarding = (onNext) => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
   const agoraAppId = import.meta.env.VITE_AGORA_APP_ID || '';
   const loanTopics = [
-    { key: 'full_name', label: 'full legal name', hints: ['full name', 'legal name', 'name as per id'] },
+    { key: 'full_name', label: 'full name', hints: ['full name', 'legal name', 'name'] },
     { key: 'dob', label: 'date of birth', hints: ['date of birth', 'dob', 'born'] },
-    { key: 'loan_purpose', label: 'loan purpose', hints: ['loan purpose', 'purpose of the loan', 'why are you applying'] },
-    { key: 'loan_amount', label: 'requested loan amount', hints: ['loan amount', 'how much', 'requested amount'] },
-    { key: 'employment', label: 'employment details', hints: ['employment', 'employer', 'job title', 'self-employed'] },
-    { key: 'income', label: 'monthly income', hints: ['monthly income', 'income', 'salary', 'take-home'] },
-    { key: 'debts', label: 'existing debts', hints: ['existing debts', 'liabilities', 'emi', 'monthly obligations'] },
-    { key: 'consent', label: 'consent to proceed', hints: ['consent', 'authorize', 'agree to proceed'] }
+    { key: 'pan', label: 'PAN number', hints: ['pan', 'pan number'] },
+    { key: 'aadhaar', label: 'Aadhaar number', hints: ['aadhaar', 'aadhaar number'] },
+    { key: 'employment_type', label: 'employment type', hints: ['employment type', 'salaried', 'self-employed'] },
+    { key: 'monthly_income', label: 'monthly income', hints: ['monthly income', 'salary', 'take-home', 'make a month'] },
+    { key: 'company_name', label: 'company name', hints: ['company name', 'employer', 'work for'] },
+    { key: 'work_experience', label: 'work experience', hints: ['work experience', 'how long', 'years of experience'] },
+    { key: 'loan_amount', label: 'loan amount required', hints: ['loan amount', 'how much', 'required'] },
+    { key: 'loan_purpose', label: 'loan purpose', hints: ['loan purpose', 'purpose', 'why are you applying'] }
   ];
 
   const formatTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -87,17 +92,34 @@ export const useVideoOnboarding = (onNext) => {
 
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Ensure we pick a valid voice (preferably English/Google) to prevent silent failures
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(v => v.lang.startsWith('en-US') && v.name.includes('Google')) ||
+                           voices.find(v => v.lang.startsWith('en-'));
+      if (englishVoice) {
+         utterance.voice = englishVoice;
+      }
+
       utterance.rate = 1;
       utterance.pitch = 1;
+      
+      // Fix for Chrome bug where 'utterance' is garbage collected before it speaks
+      window._activeSpeechUtterance = utterance;
+
       utterance.onstart = () => setIsSpeaking(true);
       utterance.onend = () => {
         setIsSpeaking(false);
+        window._activeSpeechUtterance = null;
         resolve();
       };
-      utterance.onerror = () => {
+      utterance.onerror = (e) => {
+        console.warn('Speech synthesis error:', e);
         setIsSpeaking(false);
+        window._activeSpeechUtterance = null;
         resolve();
       };
+      
       window.speechSynthesis.speak(utterance);
     });
   };
@@ -151,7 +173,10 @@ export const useVideoOnboarding = (onNext) => {
 
     return {
       role: 'user',
-      content: `Interview state for internal guidance: covered topics = ${covered.join(', ') || 'none'}. missing topics = ${missing.join(', ') || 'none'}. Ask exactly one non-repeated question focused on a missing topic.`
+      content: `Interview state for internal guidance: covered topics = ${covered.join(', ') || 'none'}. missing topics = ${missing.join(', ') || 'none'}. 
+Protocol to follow strictly:
+1. If the user just gave you new information for a topic, explicitly repeat what you collected and ask for their confirmation (e.g., 'You said your PAN is ABCDE1234F. Is that correct?'). Do not ask about a new topic yet.
+2. If the user just confirmed the information (e.g., 'yes', 'correct'), or if we are just starting, ask exactly one question about the next missing topic.`
     };
   };
 
@@ -235,6 +260,22 @@ export const useVideoOnboarding = (onNext) => {
         const completionReply = await postGroqChat([...chatMessages, completionPrompt]);
         callHistoryRef.current = [...chatMessages, { role: 'assistant', content: completionReply }].slice(-30);
         addMessage('ai', completionReply);
+        
+        // Extract data
+        try {
+          const extractResponse = await fetch(`${backendUrl}/groq/extract`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: chatMessages })
+          });
+          const extractData = await extractResponse.json();
+          if (extractData.extractedData) {
+            dispatch(setExtractedData(extractData.extractedData));
+          }
+        } catch (err) {
+          console.error("Failed to extract data:", err);
+        }
+
         setIsThinking(false);
 
         await speakText(completionReply);
@@ -339,11 +380,22 @@ export const useVideoOnboarding = (onNext) => {
     }
   };
 
+  const initializeTTS = () => {
+    // Unlocks browser TTS engine synchronously on user gesture so async TTS doesn't get blocked
+    if ('speechSynthesis' in window) {
+      const dummy = new SpeechSynthesisUtterance('');
+      dummy.volume = 0;
+      window.speechSynthesis.speak(dummy);
+    }
+  };
+
   const startOnboarding = async () => {
     if (!isJoined) {
       setJoinError('Join the call first.');
       return;
     }
+    
+    initializeTTS();
 
     setJoinError('');
     setOnboardingStarted(true);

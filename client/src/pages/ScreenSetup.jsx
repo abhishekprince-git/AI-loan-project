@@ -1,15 +1,70 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RequiredPermissionsSection, EnvironmentCheckSection, PreviewAndActionsPanel } from '../features/setup';
 
 export const ScreenSetup = ({ onNext }) => {
   const [permissions, setPermissions] = useState({
-    camera: true,
-    mic: true,
-    location: true
+    camera: false,
+    mic: false,
+    location: false
   });
+  const [errors, setErrors] = useState({
+    camera: null,
+    mic: null,
+    location: null
+  });
+  const [stream, setStream] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  const requestMedia = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      setStream(mediaStream);
+      setPermissions(prev => ({ ...prev, camera: true, mic: true }));
+      setErrors(prev => ({ ...prev, camera: null, mic: null }));
+    } catch (err) {
+      console.error("Media permission error:", err);
+      // Depending on the error, it might be heavily denied or just not found
+      setErrors(prev => ({ ...prev, camera: 'Permission denied', mic: 'Permission denied' }));
+      setPermissions(prev => ({ ...prev, camera: false, mic: false }));
+    }
+  };
+
+  const requestLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setPermissions(prev => ({ ...prev, location: true }));
+          setErrors(prev => ({ ...prev, location: null }));
+        },
+        (err) => {
+          console.error("Location error:", err);
+          setErrors(prev => ({ ...prev, location: 'Permission denied' }));
+          setPermissions(prev => ({ ...prev, location: false }));
+        }
+      );
+    } else {
+      setErrors(prev => ({ ...prev, location: 'Geolocation not supported' }));
+      setPermissions(prev => ({ ...prev, location: false }));
+    }
+  };
 
   const togglePermission = (key) => {
-    setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
+    if (key === 'camera' || key === 'mic') {
+      if (!permissions.camera || !permissions.mic) {
+        requestMedia();
+      }
+    } else if (key === 'location') {
+      if (!permissions.location) {
+        requestLocation();
+      }
+    }
   };
 
   const allAllowed = permissions.camera && permissions.mic && permissions.location;
@@ -23,10 +78,14 @@ export const ScreenSetup = ({ onNext }) => {
 
       <div className="grid grid-cols-12 gap-5 sm:gap-6 lg:gap-8">
         <div className="col-span-12 lg:col-span-7 space-y-5 sm:space-y-6 lg:space-y-8">
-          <RequiredPermissionsSection permissions={permissions} onTogglePermission={togglePermission} />
-          <EnvironmentCheckSection />
+          <RequiredPermissionsSection 
+            permissions={permissions} 
+            errors={errors}
+            onTogglePermission={togglePermission} 
+          />
+          <EnvironmentCheckSection stream={stream} />
         </div>
-        <PreviewAndActionsPanel permissions={permissions} allAllowed={allAllowed} onNext={onNext} />
+        <PreviewAndActionsPanel stream={stream} permissions={permissions} allAllowed={allAllowed} onNext={onNext} />
       </div>
     </div>
   );

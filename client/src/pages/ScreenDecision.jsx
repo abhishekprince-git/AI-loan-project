@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import { 
   Bolt, 
   CheckCircle, 
@@ -8,17 +9,44 @@ import {
   ArrowRight, 
   Lock, 
   Wallet, 
-  BadgeCheck 
+  BadgeCheck,
+  XCircle,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { selectFinalVerifiedData } from '../features/applicationData';
 
 export const ScreenDecision = ({ onNext }) => {
   const [isProcessing, setIsProcessing] = useState(true);
+  const [decisionResult, setDecisionResult] = useState(null);
+  const finalData = useSelector(selectFinalVerifiedData) || {};
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsProcessing(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
+    const evaluateLoan = async () => {
+      try {
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+        const res = await fetch(`${backendUrl}/loan/evaluate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalData)
+        });
+        const data = await res.json();
+        
+        // Add fake delay to simulate deep checking
+        setTimeout(() => {
+          setDecisionResult(data);
+          setIsProcessing(false);
+        }, 3000);
+      } catch (err) {
+        console.error(err);
+        setDecisionResult({ decision: 'Rejected', reason: 'Internal error communicating with eligibility engine.' });
+        setIsProcessing(false);
+      }
+    };
+    evaluateLoan();
+  }, [finalData]);
+
+  const isApproved = decisionResult?.decision === 'Approved';
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 py-8 sm:py-10 lg:py-12">
@@ -69,13 +97,15 @@ export const ScreenDecision = ({ onNext }) => {
           >
             <div className="col-span-12 md:col-span-8 bg-surface-container-lowest rounded-[2rem] p-6 sm:p-8 lg:p-10 ambient-bloom flex flex-col justify-between">
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold mb-6">
-                  <CheckCircle size={14} className="fill-current" />
-                  SYSTEM VERIFIED
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-6 ${isApproved ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {isApproved ? <CheckCircle size={14} className="fill-current" /> : <XCircle size={14} className="fill-current" />}
+                  SYSTEM {isApproved ? 'VERIFIED' : 'REJECTED'}
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">Approved ✅</h1>
+                <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">{isApproved ? 'Approved ✅' : 'Application Declined ❌'}</h1>
                 <p className="text-on-surface-variant text-base sm:text-lg max-w-lg leading-relaxed">
-                  Congratulations! Based on your high confidence score and verified documentation, your application has been pre-approved for the premium credit tier.
+                  {isApproved 
+                    ? 'Congratulations! Based on your high confidence score and verified documentation, your application has been approved for the premium credit tier.' 
+                    : decisionResult?.reason || 'Unfortunately, we are unable to provide a loan offer at this time based on our engine analysis.'}
                 </p>
               </div>
               <div className="mt-8 sm:mt-10 lg:mt-12 pt-8 border-t border-outline-variant/10 flex items-center justify-between gap-4">
@@ -85,55 +115,57 @@ export const ScreenDecision = ({ onNext }) => {
                     <Lock size={12} />
                   </div>
                 </div>
-                <button 
-                  onClick={onNext}
-                  className="px-8 py-4 bg-primary-gradient text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:shadow-lg transition-all active:scale-95"
-                >
-                  View Your Offer
-                  <ArrowRight size={16} />
-                </button>
+                {isApproved && (
+                  <button 
+                    onClick={onNext}
+                    className="px-8 py-4 bg-primary-gradient text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:shadow-lg transition-all active:scale-95"
+                  >
+                    View Your Offers
+                    <ArrowRight size={16} />
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="col-span-12 md:col-span-4 space-y-5 sm:space-y-6">
               <div className="bg-surface-container-lowest rounded-[2rem] p-6 sm:p-8 ambient-bloom text-center">
-                <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">Confidence Score</h3>
+                <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-4">Data Confidence</h3>
                 <div className="relative inline-flex items-center justify-center">
                   <svg className="w-32 h-32 transform -rotate-90">
                     <circle className="text-surface-container" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeWidth="8"></circle>
                     <motion.circle 
                       initial={{ strokeDashoffset: 364.4 }}
-                      animate={{ strokeDashoffset: 7.2 }}
+                      animate={{ strokeDashoffset: isApproved ? 7.2 : 150 }}
                       transition={{ duration: 2, ease: "easeOut" }}
-                      className="text-primary" cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeDasharray="364.4" strokeWidth="8"
+                      className={isApproved ? "text-primary" : "text-amber-500"} cx="64" cy="64" fill="transparent" r="58" stroke="currentColor" strokeDasharray="364.4" strokeWidth="8"
                     ></motion.circle>
                   </svg>
-                  <span className="absolute text-3xl font-black tracking-tighter">98%</span>
+                  <span className="absolute text-3xl font-black tracking-tighter">{isApproved ? '98%' : '60%'}</span>
                 </div>
-                <p className="text-[11px] text-on-surface-variant mt-4 font-medium italic">Exceptional Data Integrity</p>
+                <p className="text-[11px] text-on-surface-variant mt-4 font-medium italic">Based on Document Match</p>
               </div>
 
               <div className="bg-surface-container-high rounded-[2rem] p-6 sm:p-8">
                 <h3 className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-6">Risk Profile</h3>
                 <div className="flex items-end gap-2 mb-2">
-                  <span className="text-3xl font-bold tracking-tight">Low</span>
-                  <span className="text-xs font-bold text-green-600 mb-1">Optimized</span>
+                  <span className="text-3xl font-bold tracking-tight">{isApproved ? 'Low' : 'High'}</span>
+                  <span className={`text-xs font-bold mb-1 ${isApproved ? 'text-green-600' : 'text-red-500'}`}>{isApproved ? 'Optimized' : 'Risky'}</span>
                 </div>
                 <div className="w-full h-2 bg-white/50 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-500 w-1/4 rounded-full"></div>
+                  <div className={`h-full w-1/4 rounded-full ${isApproved ? 'bg-green-500' : 'bg-red-500'}`}></div>
                 </div>
                 <div className="mt-8 space-y-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary">
                       <Wallet size={16} className="fill-current" />
                     </div>
-                    <span className="text-xs font-semibold">Income verified</span>
+                    <span className="text-xs font-semibold">Income evaluated</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center text-primary">
-                      <BadgeCheck size={16} className="fill-current" />
+                      {isApproved ? <BadgeCheck size={16} className="fill-current" /> : <AlertTriangle size={16} className="fill-current text-amber-500" />}
                     </div>
-                    <span className="text-xs font-semibold">Verification successful</span>
+                    <span className="text-xs font-semibold">{isApproved ? 'Verification successful' : 'Verification flagged'}</span>
                   </div>
                 </div>
               </div>

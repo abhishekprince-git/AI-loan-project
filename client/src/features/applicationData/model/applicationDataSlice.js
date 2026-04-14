@@ -16,8 +16,23 @@ export const acceptOffer = createAsyncThunk('applicationData/acceptOffer', async
 
 const applicationDataSlice = createSlice({
   name: 'applicationData',
-  initialState,
-  reducers: {},
+  initialState: {
+    ...initialState,
+    extractedData: null,
+    ocrData: {},
+    finalVerifiedData: null
+  },
+  reducers: {
+    setExtractedData: (state, action) => {
+      state.extractedData = action.payload;
+    },
+    setOcrData: (state, action) => {
+      state.ocrData = { ...state.ocrData, ...action.payload };
+    },
+    setFinalVerifiedData: (state, action) => {
+      state.finalVerifiedData = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     builder
       .addCase(loadApplicationState.pending, (state) => {
@@ -39,6 +54,8 @@ const applicationDataSlice = createSlice({
       });
   }
 });
+
+export const { setExtractedData, setOcrData, setFinalVerifiedData } = applicationDataSlice.actions;
 
 export const applicationDataReducer = applicationDataSlice.reducer;
 
