@@ -9,6 +9,7 @@ import {
   generateAgentReply,
   transcribeAudio
 } from '../services/url_service.js';
+import { ENV } from '../config/constants.js';
 
 export const groqAudioUpload = multer({ storage: multer.memoryStorage() }).single('audio');
 
@@ -41,8 +42,8 @@ export async function updateOfferDecision(req, res, next) {
 }
 
 export async function issueAgoraToken(req, res) {
-  const appId = process.env.AGORA_APP_ID;
-  const appCertificate = process.env.AGORA_APP_CERTIFICATE;
+  const appId = ENV.AGORA_APP_ID;
+  const appCertificate = ENV.AGORA_APP_CERTIFICATE;
 
   if (!appId || !appCertificate) {
     return res.status(500).json({ error: 'AGORA_APP_ID and AGORA_APP_CERTIFICATE must be set in backend/.env' });
@@ -56,7 +57,7 @@ export async function issueAgoraToken(req, res) {
 
   const parsedUid = Number(uid);
   const rtcUid = Number.isNaN(parsedUid) ? 0 : parsedUid;
-  const expiresIn = Number(process.env.AGORA_TOKEN_EXPIRY_SECONDS || 3600);
+  const expiresIn = ENV.AGORA_TOKEN_EXPIRY_SECONDS;
 
   const token = buildAgoraToken({
     appId,
@@ -70,7 +71,7 @@ export async function issueAgoraToken(req, res) {
 }
 
 export async function transcribeSpeech(req, res) {
-  if (!process.env.GROQ_API_KEY) {
+  if (!ENV.GROQ_API_KEY) {
     return res.status(500).json({ error: 'GROQ_API_KEY is not configured in backend/.env' });
   }
 
@@ -79,8 +80,8 @@ export async function transcribeSpeech(req, res) {
   }
 
   try {
-    const groq = createGroqClient(process.env.GROQ_API_KEY);
-    const text = await transcribeAudio(groq, req.file, { model: process.env.GROQ_STT_MODEL });
+    const groq = createGroqClient(ENV.GROQ_API_KEY);
+    const text = await transcribeAudio(groq, req.file, { model: ENV.GROQ_STT_MODEL });
 
     return res.json({ text });
   } catch (error) {
@@ -90,7 +91,7 @@ export async function transcribeSpeech(req, res) {
 }
 
 export async function chatWithAgent(req, res) {
-  if (!process.env.GROQ_API_KEY) {
+  if (!ENV.GROQ_API_KEY) {
     return res.status(500).json({ error: 'GROQ_API_KEY is not configured in backend/.env' });
   }
 
@@ -98,8 +99,8 @@ export async function chatWithAgent(req, res) {
   const safeMessages = Array.isArray(messages) ? messages : [];
 
   try {
-    const groq = createGroqClient(process.env.GROQ_API_KEY);
-    const reply = await generateAgentReply(groq, safeMessages, { model: process.env.GROQ_CHAT_MODEL });
+    const groq = createGroqClient(ENV.GROQ_API_KEY);
+    const reply = await generateAgentReply(groq, safeMessages, { model: ENV.GROQ_CHAT_MODEL });
 
     return res.json({ reply });
   } catch (error) {

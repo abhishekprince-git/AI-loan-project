@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { connectDatabase } from './config/db.js';
+import { ENV } from './config/constants.js';
 import { authRouter } from './routes/auth_routes.js';
 import { urlRouter } from './routes/url_routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -16,11 +17,11 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+app.use(cors({ origin: ENV.CLIENT_ORIGIN }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const PORT = Number(process.env.PORT || 4000);
+const PORT = ENV.PORT;
 
 async function bootstrap() {
   await connectDatabase();

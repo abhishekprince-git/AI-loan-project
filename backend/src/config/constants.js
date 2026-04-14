@@ -1,8 +1,28 @@
 export const DEFAULT_PORT = 4000;
 export const DEFAULT_CLIENT_ORIGIN = '*';
+export const DEFAULT_DB_NAME = 'ai-loan-app';
+export const DEFAULT_MONGO_URI = `mongodb://127.0.0.1:27017/${DEFAULT_DB_NAME}`;
 export const DEFAULT_AGORA_TOKEN_EXPIRY_SECONDS = 3600;
 export const DEFAULT_GROQ_CHAT_MODEL = 'llama-3.3-70b-versatile';
 export const DEFAULT_GROQ_STT_MODEL = 'whisper-large-v3';
+
+const toNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+export const ENV = {
+  PORT: toNumber(process.env.PORT, DEFAULT_PORT),
+  CLIENT_ORIGIN: process.env.CLIENT_ORIGIN || DEFAULT_CLIENT_ORIGIN,
+  MONGODB_URI: process.env.MONGODB_URI || process.env.MONGO_URI || DEFAULT_MONGO_URI,
+  MONGO_DB_NAME: process.env.MONGO_DB_NAME || DEFAULT_DB_NAME,
+  AGORA_APP_ID: process.env.AGORA_APP_ID || '',
+  AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE || '',
+  AGORA_TOKEN_EXPIRY_SECONDS: toNumber(process.env.AGORA_TOKEN_EXPIRY_SECONDS, DEFAULT_AGORA_TOKEN_EXPIRY_SECONDS),
+  GROQ_API_KEY: process.env.GROQ_API_KEY || '',
+  GROQ_CHAT_MODEL: process.env.GROQ_CHAT_MODEL || DEFAULT_GROQ_CHAT_MODEL,
+  GROQ_STT_MODEL: process.env.GROQ_STT_MODEL || DEFAULT_GROQ_STT_MODEL
+};
 
 export const AGENT_SYSTEM_PROMPT = [
   'You are a friendly, professional human loan onboarding specialist on a live verification call.',
