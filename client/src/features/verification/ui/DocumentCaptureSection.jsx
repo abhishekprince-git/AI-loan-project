@@ -1,6 +1,3 @@
-import React from 'react';
-import { Camera, Sun } from 'lucide-react';
-import { motion } from 'motion/react';
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
