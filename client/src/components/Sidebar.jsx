@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
+import {
   LayoutDashboard,
-  Home, 
-  Settings, 
-  Video, 
-  UserCheck, 
-  Gavel, 
-  Tag, 
+  Home,
+  Settings,
+  Video,
+  UserCheck,
+  Gavel,
+  Tag,
   HelpCircle,
   X
 } from 'lucide-react';

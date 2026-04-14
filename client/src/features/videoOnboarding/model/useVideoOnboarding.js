@@ -1,19 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  AlertCircle,
-  Bot,
-  CheckCheck,
-  LoaderCircle,
-  Mic,
-  Pause,
-  PhoneOff,
-  Play,
-  Video,
-  VolumeX
-} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import AgoraRTC from 'agora-rtc-sdk-ng';
 
-export const ScreenVideo = ({ onNext }) => {
+export const useVideoOnboarding = (onNext) => {
   const agoraClientRef = useRef(null);
   const localTracksRef = useRef({ audioTrack: null, videoTrack: null });
   const mediaRecorderRef = useRef(null);
@@ -406,6 +394,49 @@ export const ScreenVideo = ({ onNext }) => {
     }
   };
 
+  const leaveCall = async () => {
+    flowControlRef.current = { active: false, paused: false };
+    clearTurnTimer();
+    stopRecorder();
+    window.speechSynthesis?.cancel();
+
+    const client = agoraClientRef.current;
+    const { audioTrack, videoTrack } = localTracksRef.current;
+
+    try {
+      if (audioTrack) {
+        audioTrack.stop();
+        audioTrack.close();
+      }
+
+      if (videoTrack) {
+        videoTrack.stop();
+        videoTrack.close();
+      }
+
+      localTracksRef.current = { audioTrack: null, videoTrack: null };
+
+      if (client) {
+        await client.leave();
+      }
+    } catch (error) {
+      console.error('Error leaving Agora call:', error);
+    } finally {
+      setIsJoined(false);
+      setIsJoining(false);
+      setOnboardingStarted(false);
+      setOnboardingCompleted(false);
+      setAgentPaused(false);
+      setIsRecording(false);
+      setIsTranscribing(false);
+      setIsThinking(false);
+      setIsSpeaking(false);
+      setIsMicOn(true);
+      setIsVideoOn(true);
+      callHistoryRef.current = [];
+    }
+  };
+
   const joinCall = async () => {
     setJoinError('');
     setIsJoining(true);
@@ -456,49 +487,6 @@ export const ScreenVideo = ({ onNext }) => {
       await leaveCall();
     } finally {
       setIsJoining(false);
-    }
-  };
-
-  const leaveCall = async () => {
-    flowControlRef.current = { active: false, paused: false };
-    clearTurnTimer();
-    stopRecorder();
-    window.speechSynthesis?.cancel();
-
-    const client = agoraClientRef.current;
-    const { audioTrack, videoTrack } = localTracksRef.current;
-
-    try {
-      if (audioTrack) {
-        audioTrack.stop();
-        audioTrack.close();
-      }
-
-      if (videoTrack) {
-        videoTrack.stop();
-        videoTrack.close();
-      }
-
-      localTracksRef.current = { audioTrack: null, videoTrack: null };
-
-      if (client) {
-        await client.leave();
-      }
-    } catch (error) {
-      console.error('Error leaving Agora call:', error);
-    } finally {
-      setIsJoined(false);
-      setIsJoining(false);
-      setOnboardingStarted(false);
-      setOnboardingCompleted(false);
-      setAgentPaused(false);
-      setIsRecording(false);
-      setIsTranscribing(false);
-      setIsThinking(false);
-      setIsSpeaking(false);
-      setIsMicOn(true);
-      setIsVideoOn(true);
-      callHistoryRef.current = [];
     }
   };
 
@@ -592,19 +580,19 @@ export const ScreenVideo = ({ onNext }) => {
     ? 'Not Joined'
     : onboardingCompleted
       ? 'Onboarding Complete'
-    : !onboardingStarted
-      ? 'Ready to Start'
-      : agentPaused
-        ? 'Onboarding Paused'
-        : isUserTurn
-          ? 'Listening to You'
-          : isTranscribing
-            ? 'Transcribing Response'
-            : isThinking
-              ? 'Preparing Next Question'
-              : isSpeaking
-                ? 'Agent Speaking'
-                : 'Onboarding Active';
+      : !onboardingStarted
+        ? 'Ready to Start'
+        : agentPaused
+          ? 'Onboarding Paused'
+          : isUserTurn
+            ? 'Listening to You'
+            : isTranscribing
+              ? 'Transcribing Response'
+              : isThinking
+                ? 'Preparing Next Question'
+                : isSpeaking
+                  ? 'Agent Speaking'
+                  : 'Onboarding Active';
 
   const onboardingGuidance = !isJoined
     ? 'Join Agora Call, then click Start.'
@@ -614,143 +602,26 @@ export const ScreenVideo = ({ onNext }) => {
       ? 'Please click Start to begin your live loan interview.'
       : turnHint;
 
-  return (
-    <div className="flex-1 h-[calc(100vh-5rem)] bg-background overflow-y-auto xl:overflow-hidden p-2 sm:p-4 lg:p-5">
-      <div className="mx-auto h-full max-w-400 grid grid-cols-1 xl:grid-cols-[minmax(0,1.2fr)_420px] gap-3 sm:gap-4 lg:gap-5">
-        <section className="min-h-0 rounded-3xl bg-surface-container-lowest border border-outline-variant/20 shadow-sm p-2.5 sm:p-4 lg:p-5 flex flex-col gap-2.5 sm:gap-3">
-          <div className="relative flex-1 min-h-52 sm:min-h-80 xl:min-h-0 rounded-2xl overflow-hidden bg-black max-[380px]:min-h-48">
-            <div id="local-video" className="w-full h-full" />
-
-            {!isJoined && (
-              <div className="absolute inset-0 bg-surface-container-highest/85 flex flex-col items-center justify-center gap-4 p-6 text-center">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant">
-                  <Video size={30} className="sm:w-9 sm:h-9" />
-                </div>
-                <p className="text-on-surface-variant font-bold text-sm sm:text-base">Join your live onboarding call</p>
-                <button
-                  onClick={joinCall}
-                  disabled={isJoining}
-                  className="px-5 h-11 rounded-full bg-primary text-white font-bold inline-flex items-center gap-2 disabled:opacity-70"
-                >
-                  {isJoining ? <LoaderCircle size={18} className="animate-spin" /> : <Video size={18} />}
-                  {isJoining ? 'Joining...' : 'Join Agora Call'}
-                </button>
-              </div>
-            )}
-
-            {isJoined && (
-              <div className="absolute left-3 right-3 bottom-3 sm:left-4 sm:right-4 sm:bottom-4 flex items-end justify-between gap-2 pointer-events-none">
-                <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/90 text-slate-900 px-2.5 py-1.5 backdrop-blur-sm shadow-sm">
-                  <button
-                    onClick={toggleMic}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${isMicOn ? 'bg-slate-200 text-slate-900' : 'bg-red-500 text-white'}`}
-                  >
-                    {isMicOn ? <Mic size={15} className="sm:w-4 sm:h-4" /> : <VolumeX size={15} className="sm:w-4 sm:h-4" />}
-                  </button>
-                  <span className="text-[11px] font-semibold hidden sm:inline">Mic {isMicOn ? 'On' : 'Off'}</span>
-                </div>
-
-                <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-white/90 text-slate-900 px-2.5 py-1.5 backdrop-blur-sm shadow-sm">
-                  <span className="text-[11px] font-semibold hidden sm:inline">Camera {isVideoOn ? 'On' : 'Off'}</span>
-                  <button
-                    onClick={toggleVideo}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${isVideoOn ? 'bg-slate-200 text-slate-900' : 'bg-red-500 text-white'}`}
-                  >
-                    <Video size={15} className="sm:w-4 sm:h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {joinError && (
-            <div className="rounded-xl border border-red-200 bg-red-50 text-red-700 px-4 py-3 flex items-start gap-2 text-sm">
-              <AlertCircle size={16} className="mt-0.5 shrink-0" />
-              <span>{joinError}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 mt-auto">
-            <button
-              onClick={startOnboarding}
-              disabled={!isJoined || onboardingStarted || onboardingCompleted || isJoining}
-              className="h-10 sm:h-12 rounded-full bg-primary text-white flex items-center justify-center gap-1 sm:gap-2 font-bold disabled:opacity-50 text-[10px] sm:text-sm px-1.5 sm:px-2"
-            >
-              <Play size={16} className="sm:w-4.5 sm:h-4.5 shrink-0" />
-              <span className="hidden sm:inline">Start</span>
-              <span className="sm:hidden max-[380px]:hidden">Start</span>
-            </button>
-
-            <button
-              onClick={pauseOrResumeAgent}
-              disabled={!onboardingStarted || onboardingCompleted}
-              className="h-10 sm:h-12 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center gap-1 sm:gap-2 font-bold disabled:opacity-50 text-[10px] sm:text-sm px-1.5 sm:px-2"
-            >
-              {agentPaused ? <Play size={16} className="sm:w-4.5 sm:h-4.5 shrink-0" /> : <Pause size={16} className="sm:w-4.5 sm:h-4.5 shrink-0" />}
-              <span className="hidden sm:inline">{agentPaused ? 'Resume Agent' : 'Pause Agent'}</span>
-              <span className="sm:hidden max-[380px]:hidden">{agentPaused ? 'Resume' : 'Pause'}</span>
-            </button>
-
-            <button
-              onClick={handleEndCall}
-              className="h-10 sm:h-12 rounded-full bg-error text-white flex items-center justify-center gap-1 sm:gap-2 font-bold text-[10px] sm:text-sm px-1.5 sm:px-2"
-            >
-              <PhoneOff size={16} className="fill-current sm:w-4.5 sm:h-4.5 shrink-0" />
-              <span className="hidden sm:inline">End Call</span>
-              <span className="sm:hidden max-[380px]:hidden">End</span>
-            </button>
-          </div>
-        </section>
-
-        <aside className="min-h-0 rounded-3xl bg-surface-container border border-outline-variant/20 shadow-sm p-4 sm:p-5 lg:p-6 flex flex-col overflow-hidden">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bot size={24} className="sm:w-7 sm:h-7 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-on-surface">Loan Onboarding Agent</h2>
-              <p className="text-xs text-on-surface-variant">Live transcript and interview log</p>
-            </div>
-          </div>
-
-          <div className={`mb-4 rounded-xl px-4 py-3 ${turnTheme}`}>
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] uppercase tracking-wider font-bold">Status</p>
-              <span className="text-[11px] uppercase tracking-wider font-bold">{turnLabel}</span>
-            </div>
-            <p className="text-sm font-semibold mt-1">{onboardingStatus}</p>
-            <p className="text-xs mt-1 opacity-95">{onboardingGuidance}</p>
-          </div>
-
-          <div ref={transcriptContainerRef} className="flex-1 min-h-40 xl:min-h-0 space-y-4 overflow-y-auto pr-1 sm:pr-2 custom-scrollbar">
-            {messages.length === 0 && (
-              <div className="rounded-2xl bg-surface-container-lowest p-4 text-sm text-on-surface-variant">
-                Transcript will appear here as soon as onboarding starts.
-              </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <div key={`${msg.time}-${i}`} className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end ml-auto' : ''} max-w-[92%]`}>
-                <div
-                  className={`p-3 sm:p-4 rounded-2xl shadow-sm ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-white rounded-tr-none'
-                      : 'bg-surface-container-lowest text-on-surface rounded-tl-none'
-                  }`}
-                >
-                  <p className={`text-sm leading-relaxed ${msg.role === 'user' ? 'italic' : ''}`}>{msg.text}</p>
-                </div>
-                <div className="flex items-center gap-1.5 px-1">
-                  {msg.role === 'user' && <CheckCheck size={12} className="text-emerald-500" />}
-                  <span className="text-[10px] text-on-surface-variant font-medium">
-                    {msg.role === 'ai' ? 'Agent' : 'Applicant'} • {msg.time}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
+  return {
+    transcriptContainerRef,
+    messages,
+    joinError,
+    isJoining,
+    isJoined,
+    isMicOn,
+    isVideoOn,
+    onboardingStarted,
+    onboardingCompleted,
+    agentPaused,
+    turnTheme,
+    turnLabel,
+    onboardingStatus,
+    onboardingGuidance,
+    joinCall,
+    toggleMic,
+    toggleVideo,
+    startOnboarding,
+    pauseOrResumeAgent,
+    handleEndCall
+  };
 };
