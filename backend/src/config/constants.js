@@ -7,6 +7,15 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env before evaluating properties
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 export const DEFAULT_PORT = 4000;
 export const DEFAULT_CLIENT_ORIGIN = '*';
 export const DEFAULT_DB_NAME = 'ai-loan-app';
