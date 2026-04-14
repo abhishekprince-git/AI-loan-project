@@ -1,19 +1,11 @@
 import cors from 'cors';
-import dotenv from 'dotenv';
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 import { connectDatabase } from './config/db.js';
 import { ENV } from './config/constants.js';
 import { authRouter } from './routes/auth_routes.js';
 import { urlRouter } from './routes/url_routes.js';
 import { errorHandler } from './middlewares/errorHandler.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 
