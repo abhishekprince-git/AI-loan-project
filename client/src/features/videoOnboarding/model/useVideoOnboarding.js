@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import AgoraRTC from 'agora-rtc-sdk-ng';
-import { setExtractedData } from '../../applicationData';
+import { setExtractedData, selectExtractedData } from '../../applicationData';
 
 export const useVideoOnboarding = (onNext) => {
   const dispatch = useDispatch();
+  const extractedData = useSelector(selectExtractedData) || {};
   const agoraClientRef = useRef(null);
   const localTracksRef = useRef({ audioTrack: null, videoTrack: null });
   const mediaRecorderRef = useRef(null);
@@ -245,37 +246,43 @@ Protocol to follow strictly:
       }
 
       addMessage('user', transcript);
-
       const chatMessages = [...callHistoryRef.current.slice(-24), { role: 'user', content: transcript }];
-      const askedCoverage = getAskedTopicCoverage(chatMessages);
+      setIsThinking(true);
 
-      if (askedCoverage.missing.length === 0) {
+      // Perform real-time extraction!
+      let latestExtracted = extractedData;
+      try {
+        const extractResponse = await fetch(`${backendUrl}/groq/extract`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: chatMessages })
+        });
+        const extractData = await extractResponse.json();
+        if (extractData.extractedData) {
+          latestExtracted = extractData.extractedData;
+          dispatch(setExtractedData(latestExtracted));
+        }
+      } catch (err) {
+        console.error("Failed to extract data:", err);
+      }
+
+      const missing = loanTopics
+         .filter(t => !latestExtracted[t.key] || String(latestExtracted[t.key]).trim() === '')
+         .map(t => t.label);
+      const covered = loanTopics
+         .filter(t => latestExtracted[t.key] && String(latestExtracted[t.key]).trim() !== '')
+         .map(t => t.label);
+
+      if (missing.length === 0) {
         const completionPrompt = {
           role: 'user',
           content:
             'All required onboarding questions have already been asked. Give a short warm closing statement confirming onboarding is complete and that the case will move to review. Do not ask another question.'
         };
 
-        setIsThinking(true);
         const completionReply = await postGroqChat([...chatMessages, completionPrompt]);
         callHistoryRef.current = [...chatMessages, { role: 'assistant', content: completionReply }].slice(-30);
         addMessage('ai', completionReply);
-        
-        // Extract data
-        try {
-          const extractResponse = await fetch(`${backendUrl}/groq/extract`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: chatMessages })
-          });
-          const extractData = await extractResponse.json();
-          if (extractData.extractedData) {
-            dispatch(setExtractedData(extractData.extractedData));
-          }
-        } catch (err) {
-          console.error("Failed to extract data:", err);
-        }
-
         setIsThinking(false);
 
         await speakText(completionReply);
@@ -286,9 +293,18 @@ Protocol to follow strictly:
         return;
       }
 
-      const chatMessagesWithState = [...chatMessages, buildCoverageStateInstruction(chatMessages)];
-      setIsThinking(true);
+      const coverageInstruction = {
+        role: 'user',
+        content: `Interview state: you have successfully extracted ${covered.join(', ') || 'nothing yet'}. 
+You are STILL MISSING the following fields: ${missing.join(', ')}. 
+Protocol to follow strictly:
+1. If the user just gave you new information, briefly confirm it out loud (e.g., 'Got it, your PAN is ABCDE1234F.').
+2. Immediately ask exactly ONE question focused on a MISSING field from the list above. Do NOT wait for a separate confirmation turn. Blend the confirmation and the next question if needed.`
+      };
+
+      const chatMessagesWithState = [...chatMessages, coverageInstruction];
       let aiReply = await postGroqChat(chatMessagesWithState);
+
 
       const previousAssistantReplies = callHistoryRef.current
         .filter((m) => m.role === 'assistant')
