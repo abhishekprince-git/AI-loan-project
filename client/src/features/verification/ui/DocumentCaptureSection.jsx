@@ -46,12 +46,23 @@ export const DocumentCaptureSection = ({ isFlashlightOn, onToggleFlashlight, onC
     setIsCapturing(true);
 
     try {
+      const MAX_WIDTH = 800;
+      let width = videoRef.current.videoWidth || 1280;
+      let height = videoRef.current.videoHeight || 720;
+
+      if (width > MAX_WIDTH) {
+          height = Math.floor((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      canvas.width = width;
+      canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(videoRef.current, 0, 0);
-      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+      ctx.drawImage(videoRef.current, 0, 0, width, height);
+      
+      // Aggressive compression to prevent payload rejection
+      const base64 = canvas.toDataURL('image/jpeg', 0.6);
 
       const res = await fetch(`${backendUrl}/groq/ocr`, {
         method: 'POST',
@@ -59,23 +70,22 @@ export const DocumentCaptureSection = ({ isFlashlightOn, onToggleFlashlight, onC
         body: JSON.stringify({ imageBase64: base64 })
       });
 
-      if (!res.ok) throw new Error('OCR Failed');
-      const data = await res.json();
+      if (!res.ok) throw new Error('OCR Failed or Timed Out');
       
+      const data = await res.json();
       if (data.ocrData) {
         dispatch(setOcrData(data.ocrData));
       }
-      
-      if (currentDocIndex === docsToCapture.length - 1) {
+    } catch (err) {
+      console.warn("OCR non-fatal failure. Progressing fallback to manual data:", err);
+    } finally {
+      setIsCapturing(false);
+      if (currentDocIndex >= docsToCapture.length - 1) {
         setCurrentDocIndex(prev => prev + 1);
-        onComplete(); // Move to Mismatch resolver!
+        onComplete();
       } else {
         setCurrentDocIndex(prev => prev + 1);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsCapturing(false);
     }
   };
 
