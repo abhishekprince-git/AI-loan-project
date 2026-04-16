@@ -26,6 +26,8 @@ async function bootstrap() {
 
   app.listen(PORT, () => {
     console.log(`AI loan backend running on port ${PORT}`);
+    console.log(`EMAIL_HOST=${ENV.EMAIL_HOST}`);
+    console.log(`EMAIL_USER=${ENV.EMAIL_USER}`);
   });
 }
 

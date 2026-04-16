@@ -15,10 +15,12 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { selectFinalVerifiedData } from '../features/applicationData';
+import { downloadLoanApplicationPdf } from '../services/api';
 
 export const ScreenDecision = ({ onNext }) => {
   const [isProcessing, setIsProcessing] = useState(true);
   const [decisionResult, setDecisionResult] = useState(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const finalData = useSelector(selectFinalVerifiedData) || {};
 
   useEffect(() => {
@@ -107,23 +109,53 @@ export const ScreenDecision = ({ onNext }) => {
                     ? 'Congratulations! Based on your high confidence score and verified documentation, your application has been approved for the premium credit tier.' 
                     : decisionResult?.reason || 'Unfortunately, we are unable to provide a loan offer at this time based on our engine analysis.'}
                 </p>
+                {decisionResult?.explanation ? (
+                  <p className="mt-4 text-sm text-on-surface-variant/90 max-w-lg leading-relaxed">
+                    {decisionResult.explanation}
+                  </p>
+                ) : null}
               </div>
-              <div className="mt-8 sm:mt-10 lg:mt-12 pt-8 border-t border-outline-variant/10 flex items-center justify-between gap-4">
+              <div className="mt-8 sm:mt-10 lg:mt-12 pt-8 border-t border-outline-variant/10 flex flex-col sm:flex-row items-stretch justify-between gap-4">
                 <div className="flex -space-x-2">
                   <div className="w-10 h-10 rounded-full border-2 border-white bg-blue-100 flex items-center justify-center text-[10px] font-bold">AI</div>
                   <div className="w-10 h-10 rounded-full border-2 border-white bg-surface-container-high flex items-center justify-center">
                     <Lock size={12} />
                   </div>
                 </div>
-                {isApproved && (
-                  <button 
-                    onClick={onNext}
-                    className="px-8 py-4 bg-primary-gradient text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:shadow-lg transition-all active:scale-95"
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <button
+                    onClick={async () => {
+                      setIsDownloading(true);
+                      try {
+                        await downloadLoanApplicationPdf({
+                          ...finalData,
+                          decision: decisionResult?.decision,
+                          reason: decisionResult?.reason,
+                          explanation: decisionResult?.explanation,
+                          details: decisionResult?.details,
+                          phone: finalData.phone || finalData.mobile || ''
+                        });
+                      } catch (error) {
+                        console.error(error);
+                        alert(error.message || 'Unable to download PDF.');
+                      } finally {
+                        setIsDownloading(false);
+                      }
+                    }}
+                    className="px-8 py-4 bg-surface-container-high rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-surface-container transition-all active:scale-95 w-full"
                   >
-                    View Your Offers
-                    <ArrowRight size={16} />
+                    {isDownloading ? 'Preparing PDF…' : 'Download Application PDF'}
                   </button>
-                )}
+                  {isApproved && (
+                    <button 
+                      onClick={onNext}
+                      className="px-8 py-4 bg-primary-gradient text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:shadow-lg transition-all active:scale-95 w-full"
+                    >
+                      View Your Offers
+                      <ArrowRight size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

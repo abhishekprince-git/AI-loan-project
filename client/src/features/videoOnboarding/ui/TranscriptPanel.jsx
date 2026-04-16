@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Bot, CheckCheck } from 'lucide-react';
 
 export const TranscriptPanel = ({
@@ -8,8 +8,17 @@ export const TranscriptPanel = ({
   turnLabel,
   onboardingStatus,
   onboardingGuidance
-}) => (
-  <aside className="min-h-0 rounded-3xl bg-surface-container border border-outline-variant/20 shadow-sm p-4 sm:p-5 lg:p-6 flex flex-col overflow-hidden">
+}) => {
+  const bottomRef = useRef(null);
+
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [messages]);
+
+  return (
+    <aside className="min-h-0 rounded-3xl bg-surface-container border border-outline-variant/20 shadow-sm p-4 sm:p-5 lg:p-6 flex flex-col overflow-hidden">
     <div className="flex items-center gap-4 mb-4">
       <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-primary/10 flex items-center justify-center">
         <Bot size={24} className="sm:w-7 sm:h-7 text-primary" />
@@ -55,6 +64,8 @@ export const TranscriptPanel = ({
           </div>
         </div>
       ))}
+      <div ref={bottomRef} />
     </div>
   </aside>
 );
+};

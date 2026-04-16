@@ -46,7 +46,7 @@ export const ScreenVideo = ({ onNext }) => {
         />
 
         <div className="h-full hidden xl:block md:max-h-[calc(100vh-7rem)]">
-          <LiveFormPanel />
+          <LiveFormPanel isJoined={isJoined} />
         </div>
 
         <div className="h-full md:max-h-[calc(100vh-7rem)]">

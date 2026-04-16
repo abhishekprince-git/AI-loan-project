@@ -10,12 +10,18 @@ This backend issues short-lived Agora RTC tokens and provides Groq APIs for spee
 2. Copy env file:
    cp .env.example .env
 
-3. Fill in your Agora credentials in `.env`:
+3. Fill in your Agora credentials and email OTP settings in `.env`:
    - `AGORA_APP_ID`
    - `AGORA_APP_CERTIFICATE`
    - `GROQ_API_KEY`
    - `MONGODB_URI`
    - optional `MONGO_DB_NAME` (defaults to `ai-loan-app`)
+   - `EMAIL_HOST` (e.g. `smtp.gmail.com`)
+   - `EMAIL_PORT` (e.g. `465` for Gmail SSL)
+   - `EMAIL_SECURE` (`true` for SSL/TLS)
+   - `EMAIL_USER` (your Gmail address)
+   - `EMAIL_PASS` (Gmail App Password if 2FA is enabled)
+   - `EMAIL_FROM` (sender display name and email)
 
 Optional model overrides:
 - `GROQ_CHAT_MODEL` (default: `llama-3.3-70b-versatile`)

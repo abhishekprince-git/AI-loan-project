@@ -209,6 +209,47 @@ export async function transcribeAudio(groq, file, { model = DEFAULT_GROQ_STT_MOD
   return transcription?.text?.trim() || '';
 }
 
+export function calculateEmi(principal, annualInterestRate, tenureMonths) {
+  const loanAmount = Number(principal || 0);
+  const rate = Number(annualInterestRate || 0);
+  const tenure = Number(tenureMonths || 0);
+
+  if (!loanAmount || loanAmount <= 0 || !tenure || tenure <= 0) {
+    return 0;
+  }
+
+  const monthlyRate = rate / 12 / 100;
+
+  if (monthlyRate === 0) {
+    return Number((loanAmount / tenure).toFixed(0));
+  }
+
+  const factor = Math.pow(1 + monthlyRate, tenure);
+  const emi = (loanAmount * monthlyRate * factor) / (factor - 1);
+  return Number(emi.toFixed(0));
+}
+
+export function generateLoanOfferDetails({ loanAmount, annualInterestRate, tenureMonths, bank, product, offerId }) {
+  const amount = Number(loanAmount || 0);
+  const rate = Number(annualInterestRate || 0);
+  const tenure = Number(tenureMonths || 0);
+  const emi = calculateEmi(amount, rate, tenure);
+  const totalPayment = Number((emi * tenure).toFixed(0));
+  const totalInterest = Number((totalPayment - amount).toFixed(0));
+
+  return {
+    id: offerId || `${bank?.toLowerCase().replace(/\s+/g, '-') || 'offer'}-${tenure}`,
+    bank: bank || 'Partner Bank',
+    amount,
+    rate: `${rate}%`,
+    tenure,
+    emi,
+    totalPayment,
+    totalInterest,
+    type: product || 'Loan Offer'
+  };
+}
+
 export async function generateAgentReply(groq, messages, { model = DEFAULT_GROQ_CHAT_MODEL } = {}) {
   const completion = await groq.chat.completions.create({
     model,
